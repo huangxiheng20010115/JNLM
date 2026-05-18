@@ -14,9 +14,12 @@ dist/
 
 # Local data / outputs
 data/
+!examples/data/
+!examples/data/demo_slc_pair.mat
 datasets/
 outputs/
 *.mat
+!examples/data/demo_slc_pair.mat
 *.npy
 *.npz
 
