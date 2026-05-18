@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jnlm"
+version = "0.1.0"
+description = "Official Python implementation of Joint Nonlocal Means (JNLM) for registered complex SLC-pair filtering."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+  { name = "JNLM contributors" }
+]
+dependencies = [
+  "numpy>=1.23",
+  "scipy>=1.9",
+  "matplotlib>=3.6",
+  "PyYAML>=6.0",
+  "h5py>=3.8",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+]
+
+[tool.setuptools]
+packages = ["jnlm"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

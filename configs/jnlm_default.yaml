@@ -1,0 +1,7 @@
+patch_size: 7
+search_window_size: 21
+h: 0.15
+gauss_ps: 1.0
+do_norm: true
+use_single: true
+coh_win: 11
