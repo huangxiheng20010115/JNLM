@@ -2,14 +2,14 @@
 
 ## Scope
 
-This is the first clean Python implementation of the JNLM complex SLC-pair
-filter under `D:\14\14_py`. The implementation follows the MATLAB reference:
-
-`D:\14\14所\algorithms\jnlm\jnlm_pair_complex_matlab.m`
+This is the clean public Python implementation of the JNLM filtering workflow.
+It follows the MATLAB references `jnlm_pair_complex_matlab.m` and
+`jnlm_insar_matlab.m`.
 
 v1 includes only:
 
 - four-channel registered SLC-pair JNLM;
+- the MATLAB-equivalent InSAR wrapper `jnlm_filter_insar(...)`;
 - robust normalization and inverse normalization;
 - shared patch weights over `[Re(M), Im(M), Re(S), Im(S)]`;
 - weighted same-channel reconstruction for master and slave;
@@ -22,64 +22,31 @@ v1 includes only:
 v1 does not include registration, RANSAC, HOG, two-stage workflows, SANLE,
 power-domain extensions, adaptive shrinkage, parameter scans, or model training.
 
-## IFG-Guided Variant
+## Official Public Entry Points
 
-An independent IFG-guided variant is implemented under:
+The release exposes two official APIs over the same JNLM core:
 
-`jnlm/variants/ifg_guided.py`
+```python
+from jnlm import jnlm_filter_insar, jnlm_filter_slc_pair
+```
 
-This variant exists to reproduce and evaluate an older experimental idea that
-had better visual/metric behavior in some runs. It is not a replacement for
-official v1.
-
-Official v1 filters the original registered complex SLC pair directly:
-
-`[Re(M), Im(M), Re(S), Im(S)]`
-
-The IFG-guided variant first builds:
+`jnlm_filter_insar(...)` matches MATLAB `jnlm_insar_matlab.m` by constructing:
 
 ```text
-amp_m = abs(M)
-amp_s = abs(S)
-ph_ifg = angle(M * conj(S))
-M_guided = amp_m + 0j
-S_guided = amp_s * exp(-1j * ph_ifg)
+M = amplitude_master + 0j
+S = amplitude_slave * exp(-1j * phase)
 ```
 
-Then it applies the shared-weight / same-channel JNLM reconstruction to
-`M_guided` and `S_guided`.
+and then calling the shared-weight JNLM core. This is the recommended entry
+point when reproducing the historical InSAR pipeline and the HH_HH benchmark.
 
-Because the interferometric phase is injected into the guided input before
-filtering, this variant must not be described as raw SLC-pair JNLM. It should be
-reported as `IFG-guided JNLM variant`.
+`jnlm_filter_slc_pair(...)` directly filters the original registered complex SLC
+pair. It is useful when direct pair filtering is the intended experiment, but it
+is not the same input representation as the MATLAB InSAR wrapper.
 
-Variant config:
-
-`configs/jnlm_ifg_guided.yaml`
-
-The default weight mode follows the older experiment:
-
-```yaml
-mean_mode: sharpened
-weight_floor: 0.05
-weight_power: 2.0
-```
-
-For raw exponential weights, use:
-
-```yaml
-mean_mode: legacy_mean
-```
-
-Single-tile diagnosis:
-
-```powershell
-python D:\14\14_py\scripts\run_ifg_guided_diagnosis_single_tile.py
-```
-
-Default output:
-
-`D:\14\14_py\outputs\jnlm_official_v1\ifg_guided_diagnosis_single_tile`
+Research-only variants such as sharpened IFG-guided weighting, two-stage
+refinement, and BM3D-inspired branches are intentionally excluded from this
+public release.
 
 ## Method Definition
 
@@ -101,15 +68,28 @@ The same scalar weight is used to reconstruct each master/slave real/imag channe
 
 ## Inputs and Outputs
 
-Main API:
+Main APIs:
 
 ```python
-from jnlm import JNLMConfig, jnlm_filter_slc_pair
+from jnlm import JNLMConfig, jnlm_filter_insar, jnlm_filter_slc_pair
 
-result = jnlm_filter_slc_pair(master_cpx, slave_cpx, valid_mask=None, config=JNLMConfig())
+result_insar = jnlm_filter_insar(
+    amplitude_master,
+    amplitude_slave,
+    phase_raw,
+    valid_mask=None,
+    config=JNLMConfig(),
+)
+
+result_pair = jnlm_filter_slc_pair(
+    master_cpx,
+    slave_cpx,
+    valid_mask=None,
+    config=JNLMConfig(),
+)
 ```
 
-`master_cpx` and `slave_cpx` must be 2-D complex arrays with the same shape.
+For `jnlm_filter_slc_pair`, `master_cpx` and `slave_cpx` must be 2-D complex arrays with the same shape.
 `valid_mask` is optional and is carried through for metrics. The MATLAB reference
 does not mask the core weight computation, so v1 does not mask filtering either.
 The dataset runners handle real tile edge artifacts by marking non-finite
@@ -170,21 +150,23 @@ tested, keep the parameter file fixed and compare output metrics and arrays.
 Single tile:
 
 ```powershell
-python D:\14\14_py\scripts\run_jnlm_single_tile.py `
-  --tile "D:\14\14_py\datasets\平地\VV_VV\block12288_tile2048_slc_pair\samples\<tile>.mat" `
-  --config "D:\14\14_py\configs\jnlm_debug.yaml" `
-  --output_dir "D:\14\14_py\outputs\jnlm_official_v1\single_tile_debug"
+python scripts/run_jnlm_single_tile.py `
+  --tile "D:\path\to\registered_slc_pair.mat" `
+  --config "configs\jnlm_debug.yaml" `
+  --mode insar `
+  --output_dir "outputs\single_tile_debug"
 ```
 
 Dataset smoke test:
 
 ```powershell
-python D:\14\14_py\scripts\run_jnlm_dataset.py `
-  --dataset_dir "D:\14\14_py\datasets\平地\VV_VV\block12288_tile2048_slc_pair" `
+python scripts/run_jnlm_dataset.py `
+  --dataset_dir "D:\path\to\dataset_root" `
   --split samples `
   --max_tiles 2 `
-  --config "D:\14\14_py\configs\jnlm_debug.yaml" `
-  --output_dir "D:\14\14_py\outputs\jnlm_official_v1\dataset_smoke"
+  --config "configs\jnlm_debug.yaml" `
+  --mode insar `
+  --output_dir "outputs\dataset_smoke"
 ```
 
 Full-size `2048 x 2048` tiles with the default `21 x 21` search window are
@@ -209,9 +191,9 @@ After exporting a small MATLAB reference MAT containing `M`, `S`, `M_dn`, and
 `S_dn`, run:
 
 ```powershell
-python D:\14\14_py\scripts\compare_jnlm_matlab_python.py `
+python scripts/compare_jnlm_matlab_python.py `
   --matlab_reference "D:\path\to\jnlm_reference_case.mat" `
-  --config "D:\14\14_py\configs\jnlm_debug.yaml"
+  --config "configs\jnlm_debug.yaml"
 ```
 
 This reports mean relative error. It does not claim full MATLAB equivalence by

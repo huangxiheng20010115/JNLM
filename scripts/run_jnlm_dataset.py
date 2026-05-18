@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
 
 from jnlm.coherence import coherence_stats, local_coherence
 from jnlm.config import load_config
-from jnlm.core import jnlm_filter_slc_pair
+from jnlm.core import jnlm_filter_insar, jnlm_filter_slc_pair
 from jnlm.io import list_tile_files, load_slc_pair_tile, save_filter_result
 from jnlm.residue import residue_density, wrapped_phase_difference
 from jnlm.visualize import save_comparison_png
@@ -34,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--h", type=float, default=None)
     parser.add_argument("--gauss_ps", type=float, default=None)
     parser.add_argument("--coh_win", type=int, default=None)
+    parser.add_argument("--mode", choices=["insar", "slc_pair"], default="insar", help="Use the official InSAR wrapper or direct SLC-pair filtering.")
     parser.add_argument("--no_figures", action="store_true")
     parser.add_argument("--no_mat", action="store_true")
     return parser.parse_args()
@@ -44,6 +45,7 @@ def run_one(
     out_dir: Path,
     cfg,
     *,
+    mode: str = "insar",
     save_mat: bool = True,
     save_figures: bool = True,
 ) -> dict[str, object]:
@@ -61,10 +63,14 @@ def run_one(
     ifg_before = master * np.conj(slave)
     phase_before = np.angle(ifg_before)
     t0 = time.perf_counter()
-    result = jnlm_filter_slc_pair(master, slave, mask, cfg)
+    if mode == "insar":
+        result = jnlm_filter_insar(np.abs(master), np.abs(slave), phase_before, mask, cfg)
+        variant_name = "official_insar_v1"
+    else:
+        result = jnlm_filter_slc_pair(master, slave, mask, cfg)
+        variant_name = "official_slc_pair_v1"
     master_after_for_metrics = result.master_after
     slave_after_for_metrics = result.slave_after
-    variant_name = "official_v1"
     runtime = time.perf_counter() - t0
 
     coh_before = local_coherence(master, slave, mask, cfg.coh_win)

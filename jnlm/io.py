@@ -37,7 +37,10 @@ def load_mat_any(path: str | Path) -> dict[str, Any]:
         for key in f.keys():
             obj = f[key]
             if isinstance(obj, h5py.Dataset):
-                out[key] = np.array(obj)
+                arr = np.array(obj)
+                if arr.dtype.names and {"real", "imag"}.issubset(arr.dtype.names):
+                    arr = arr["real"] + 1j * arr["imag"]
+                out[key] = arr
             elif isinstance(obj, h5py.Group) and {"real", "imag"}.issubset(obj.keys()):
                 out[key] = np.array(obj["real"]) + 1j * np.array(obj["imag"])
     return out

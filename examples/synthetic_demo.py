@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from jnlm import JNLMConfig, jnlm_filter_slc_pair
+from jnlm import JNLMConfig, jnlm_filter_insar, jnlm_filter_slc_pair
 
 
 def main() -> None:
@@ -13,17 +13,23 @@ def main() -> None:
     clean_phase = yy + xx
     master = np.exp(1j * (clean_phase + 0.15 * rng.standard_normal((h, w))))
     slave = np.exp(1j * (0.15 * rng.standard_normal((h, w))))
+    cfg = JNLMConfig(patch_size=3, search_window_size=5)
 
-    result = jnlm_filter_slc_pair(
+    raw_pair = jnlm_filter_slc_pair(
         master.astype(np.complex64),
         slave.astype(np.complex64),
-        config=JNLMConfig(patch_size=3, search_window_size=5),
+        config=cfg,
+    )
+    insar = jnlm_filter_insar(
+        amplitude_master=np.abs(master),
+        amplitude_slave=np.abs(slave),
+        phase=np.angle(master * np.conj(slave)),
+        config=cfg,
     )
 
-    print('master_after:', result.master_after.shape)
-    print('slave_after:', result.slave_after.shape)
-    print('phase_after:', result.phase_after.shape)
+    print("raw_pair_phase_after:", raw_pair.phase_after.shape)
+    print("insar_phase_after:", insar.phase_after.shape)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

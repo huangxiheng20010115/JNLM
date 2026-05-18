@@ -7,8 +7,18 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import hsv_to_rgb
 
 from .residue import residue_map, wrapped_phase_difference
+
+
+
+
+def phase_rgb(phi: np.ndarray) -> np.ndarray:
+    """Render wrapped phase with a circular HSV color wheel."""
+
+    hue = ((phi + np.pi) / (2 * np.pi)).astype(np.float32)
+    return hsv_to_rgb(np.dstack([hue, np.ones_like(hue), np.ones_like(hue)]))
 
 
 def _decimate(arr: np.ndarray, max_side: int = 900) -> np.ndarray:
@@ -38,8 +48,8 @@ def save_comparison_png(
 
     res_after_display = np.abs(res_after).astype(float) * res_valid.astype(float)
     panels = [
-        ("Raw phase", _decimate(phase_before), "twilight", (-np.pi, np.pi)),
-        ("JNLM phase", _decimate(phase_after), "twilight", (-np.pi, np.pi)),
+        ("Raw phase", _decimate(phase_rgb(phase_before)), None, None),
+        ("JNLM phase", _decimate(phase_rgb(phase_after)), None, None),
         ("Wrapped diff", _decimate(delta), "twilight", (-np.pi, np.pi)),
         ("Valid mask", _decimate(valid_mask.astype(float)), "gray", (0, 1)),
         ("Raw coherence", _decimate(coh_before), "viridis", (0, 1)),
@@ -52,9 +62,12 @@ def save_comparison_png(
     if title:
         fig.suptitle(title, fontsize=11)
     for ax, (name, img, cmap, lim) in zip(axes.flat, panels):
-        im = ax.imshow(img, cmap=cmap, vmin=lim[0], vmax=lim[1])
+        if cmap is None:
+            ax.imshow(img)
+        else:
+            im = ax.imshow(img, cmap=cmap, vmin=lim[0], vmax=lim[1])
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02)
         ax.set_title(name, fontsize=10)
         ax.set_axis_off()
-        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02)
     fig.savefig(out, dpi=140)
     plt.close(fig)

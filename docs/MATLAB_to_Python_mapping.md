@@ -2,7 +2,12 @@
 
 ## Goal
 
-Build a clean official Python implementation under `D:\14\14_py` that reproduces the MATLAB JNLM complex-pair behavior first, then adds runners and diagnostics around it. The official v1 should be small, testable, and separate from registration and experiment-specific scripts.
+Build a clean official Python implementation that reproduces both MATLAB reference entry points:
+
+1. `jnlm_pair_complex_matlab.m` for direct registered SLC-pair filtering;
+2. `jnlm_insar_matlab.m` for the amplitude/phase InSAR wrapper that constructs a guided pair before calling the same core filter.
+
+The official v1 should stay small, testable, and separate from registration and experiment-specific scripts.
 
 ## Proposed Python Package Layout
 

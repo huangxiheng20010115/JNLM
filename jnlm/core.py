@@ -193,3 +193,58 @@ def jnlm_filter_slc_pair(
         config=cfg.to_dict(),
         timings=timings,
     )
+
+
+def jnlm_filter_insar(
+    amplitude_master: np.ndarray,
+    amplitude_slave: np.ndarray,
+    phase: np.ndarray,
+    valid_mask: np.ndarray | None = None,
+    config: JNLMConfig | dict[str, Any] | None = None,
+) -> FilterResult:
+    """Filter an InSAR amplitude/phase representation with official JNLM.
+
+    This is the Python equivalent of the MATLAB ``jnlm_insar_matlab`` wrapper:
+    it constructs a guided complex pair
+
+    ``M = amplitude_master + 0j``
+    ``S = amplitude_slave * exp(-1j * phase)``
+
+    and then runs :func:`jnlm_filter_slc_pair` on that pair. Use this entry point
+    when the available/reference workflow is defined by amplitudes plus the raw
+    interferometric phase, rather than by direct filtering of the original
+    registered complex SLC pair.
+    """
+
+    amp_m = np.asarray(amplitude_master)
+    amp_s = np.asarray(amplitude_slave)
+    ph = np.asarray(phase)
+    if amp_m.ndim != 2 or amp_s.ndim != 2 or ph.ndim != 2:
+        raise ValueError("amplitude_master, amplitude_slave, and phase must be 2-D arrays")
+    if amp_m.shape != amp_s.shape or amp_m.shape != ph.shape:
+        raise ValueError(
+            "amplitude_master, amplitude_slave, and phase must have identical shapes: "
+            f"{amp_m.shape}, {amp_s.shape}, {ph.shape}"
+        )
+    if np.iscomplexobj(amp_m) or np.iscomplexobj(amp_s):
+        raise ValueError("amplitude_master and amplitude_slave must be real-valued arrays")
+
+    if isinstance(config, JNLMConfig):
+        use_single = config.use_single
+    elif isinstance(config, dict):
+        use_single = bool(config.get("use_single", JNLMConfig().use_single))
+    else:
+        use_single = JNLMConfig().use_single
+    real_dtype = np.float32 if use_single else np.float64
+    complex_dtype = np.complex64 if use_single else np.complex128
+
+    guided_master = np.asarray(amp_m, dtype=real_dtype).astype(complex_dtype)
+    guided_slave = np.asarray(amp_s, dtype=real_dtype) * np.exp(-1j * np.asarray(ph, dtype=real_dtype))
+    guided_slave = np.asarray(guided_slave, dtype=complex_dtype)
+
+    return jnlm_filter_slc_pair(
+        guided_master,
+        guided_slave,
+        valid_mask=valid_mask,
+        config=config,
+    )

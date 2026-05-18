@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "jnlm"
 version = "0.1.0"
-description = "Official Python implementation of Joint Nonlocal Means (JNLM) for registered complex SLC-pair filtering."
+description = "Official Python implementation of Joint Nonlocal Means (JNLM) for direct SLC-pair and InSAR-guided filtering."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
